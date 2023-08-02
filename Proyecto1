@@ -1,0 +1,250 @@
+import pandas as pd
+import numpy as np
+
+df1 = pd.DataFrame
+df1 = pd.read_csv("C:/Users/Fede/Documents/Henry/Labs/movies_dataset.csv")
+
+# Leer solo las columnas 'cast' y 'crew' del archivo credits.csv
+df2 = pd.read_csv("C:/Users/Fede/Documents/Henry/Labs/credits.csv", usecols=['cast', 'crew'])
+
+# Agregar las columnas 'cast' y 'crew' del DataFrame df2 al DataFrame df1
+df1['cast'] = df2['cast']
+df1['crew'] = df2['crew']
+
+import ast
+
+
+def extraer_nombre_actor(cast):
+    if pd.isnull(cast):
+        return np.nan
+    else:
+        try:
+            actor_list = ast.literal_eval(cast)
+            actor_names = [actor['name'] for actor in actor_list]
+            return ', '.join(actor_names)  # Devuelve los nombres y apellidos de los actores separados por coma
+        except (ValueError, TypeError):
+            return np.nan
+
+# Aplicar la función extraer_nombre_actor a la columna 'cast'
+df1['actores'] = df1['cast'].apply(extraer_nombre_actor)
+
+df1.drop(['actores', 'cast'], axis=1, inplace=True)
+def extraer_director(crew):
+    if pd.isnull(crew):
+        return np.nan
+    else:
+        try:
+            crew_list = ast.literal_eval(crew)
+            for member in crew_list:
+                if member['job'] == 'Director':
+                    return member['name']
+            return np.nan
+        except (ValueError, TypeError):
+            return np.nan
+
+
+# Aplicar la función extraer_director a la columna 'crew' y crear la columna 'director'
+df1['director'] = df1['crew'].apply(extraer_director)
+
+df1.drop('crew', axis=1, inplace=True)
+
+# Función para desanidar la columna 'belongs_to_collection'
+def extraer_collection_name(collection):
+    if pd.isnull(collection):
+        return np.nan
+    else:
+        try:
+            return ast.literal_eval(collection)['name']
+        except (ValueError, TypeError):
+            return np.nan
+
+# Luego aplicamos la funcion a 'belongs_to_collection'
+df1['belongs_to_collection'] = df1['belongs_to_collection'].apply(extraer_collection_name)
+
+
+# Función para desanidar la columna 'spoken_languages' y extraer el nombre del idioma
+def extract_language_name(languages):
+    if pd.isnull(languages):
+        return pd.NA
+    try:
+        languages_list = eval(languages)
+        language_names = [lang['name'] for lang in languages_list]
+        return ", ".join(language_names)
+    except (ValueError, TypeError):
+        return pd.NA
+
+# Aplicar la función para desanidar 'spoken_languages' y obtener el nombre del idioma
+df1['spoken_languages'] = df1['spoken_languages'].apply(extract_language_name)
+print(df1.describe())
+
+# Función para desanidar la columna 'genres' y extraer los nombres de los géneros
+def extract_genre_names(genres):
+    if pd.isnull(genres):
+        return pd.NA
+    try:
+        genres_list = eval(genres)
+        genre_names = [genre['name'] for genre in genres_list]
+        return ", ".join(genre_names)
+    except (ValueError, TypeError):
+        return pd.NA
+
+# Aplicar la función para desanidar 'genres' y obtener los nombres de los géneros
+df1['genres'] = df1['genres'].apply(extract_genre_names)
+
+# Función para desanidar la columna 'production_companies' y extraer los nombres de las compañías de producción
+def extract_production_company_names(companies):
+    if pd.isnull(companies):
+        return pd.NA
+    try:
+        companies_list = eval(companies)
+        company_names = [company['name'] for company in companies_list]
+        return ", ".join(company_names)
+    except (ValueError, TypeError):
+        return pd.NA
+
+# Aplicar la función para desanidar 'production_companies' y obtener los nombres de las compañías de producción
+df1['production_companies'] = df1['production_companies'].apply(extract_production_company_names)
+
+# Función para desanidar la columna 'production_countries' y extraer los nombres de los países de producción
+def extract_country_names(countries):
+    if pd.isnull(countries):
+        return pd.NA
+    try:
+        countries_list = eval(countries)
+        country_names = [country['name'] for country in countries_list]
+        return ", ".join(country_names)
+    except (ValueError, TypeError):
+        return pd.NA
+
+# Aplicar la función para desanidar 'production_countries' y obtener los nombres de los países de producción
+df1['production_countries'] = df1['production_countries'].apply(extract_country_names)
+
+# Rellenar los valores nulos en la columna "budget" con 0
+df1['budget'].fillna(0, inplace=True)
+
+# Rellenar los valores nulos en la columna "revenue" con 0
+df1['revenue'].fillna(0, inplace=True)
+
+# Eliminar los valores nulos del campo 'release_date'
+df1.dropna(subset=['release_date'], inplace=True)
+
+# Convertir la columna 'release_date' a objetos de fecha y manejar los valores no válidos
+df1['release_date'] = pd.to_datetime(df1['release_date'], errors='coerce')
+
+# Eliminar las filas que contienen valores NaT (no válidos)
+df1.dropna(subset=['release_date'], inplace=True)
+
+# Formatear las fechas en el formato 'AAAA-mm-dd'
+df1['release_date'] = df1['release_date'].dt.strftime('%Y-%m-%d')
+
+# Función para calcular el retorno de inversión
+def calculate_return(row):
+    revenue = pd.to_numeric(row['revenue'], errors='coerce')
+    budget = pd.to_numeric(row['budget'], errors='coerce')
+    if pd.notna(revenue) and pd.notna(budget) and budget != 0:
+        return revenue / budget
+    return 0
+
+# Crear la nueva columna 'return' aplicando la función de cálculo
+df1['return'] = df1.apply(calculate_return, axis=1)
+# Lista de columnas a eliminar
+columnas_a_eliminar = ['video', 'imdb_id', 'adult', 'original_title', 'poster_path']
+
+# Eliminar las columnas que no serán utilizadas
+df1.drop(columns=columnas_a_eliminar, inplace=True)
+
+import pandas as pd
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import CountVectorizer
+
+# Paso 1: Cargar el dataset
+moviesdataset = pd.read_csv("C:/Users/Fede/Documents/Henry/Labs/Fanny/moviesdataset.csv")
+
+# Estadísticas descriptivas
+print(moviesdataset.describe())
+
+# Distribuciones de variables numéricas
+moviesdataset.hist(figsize=(12, 10))
+
+# Matriz de correlación
+correlation_matrix = moviesdataset.corr()
+print(correlation_matrix)
+
+# Nube de palabras para los títulos de películas
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+
+title_wordcloud = WordCloud(width=800, height=400, background_color='white').generate(' '.join(moviesdataset['title']))
+plt.figure(figsize=(10, 5))
+plt.imshow(title_wordcloud, interpolation='bilinear')
+plt.axis('off')
+plt.show()
+
+#Sistema de recomendación
+import matplotlib.pyplot as plt
+import seaborn as sns
+from wordcloud import WordCloud
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import linear_kernel
+
+# Eliminamos filas con valores faltantes en las columnas relevantes para el análisis
+moviesdataset.dropna(subset=['belongs_to_collection', 'genres', 'release_date', 'original_language'], inplace=True)
+
+# Limpiar y estandarizar el texto para facilitar la búsqueda
+moviesdataset['title'] = moviesdataset['title'].str.lower().str.strip()
+# Gráfico de nube de palabras con las palabras más frecuentes en los títulos de las películas
+def plot_wordcloud(text):
+    wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text)
+    plt.figure(figsize=(10, 5))
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis('off')
+    plt.show()
+
+# Concatenar todos los títulos de películas para generar la nube de palabras
+titles_text = ' '.join(moviesdataset['title'])
+plot_wordcloud(titles_text)
+moviesdataset['combined_features'] = (
+    moviesdataset['belongs_to_collection'].astype(str) + ' ' +
+    moviesdataset['genres'].astype(str) + ' ' +
+    moviesdataset['release_date'].astype(str) + ' ' +
+    moviesdataset['original_language'].astype(str)
+)
+
+# Crear la matriz de características TF-IDF
+tfidf_vectorizer = TfidfVectorizer()
+tfidf_matrix = tfidf_vectorizer.fit_transform(moviesdataset['combined_features'])
+
+# Calcular la similitud del coseno utilizando el kernel lineal
+cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
+from fuzzywuzzy import fuzz
+
+def recomendacion(titulo):
+    # Convertir el título ingresado a minúsculas y eliminar espacios en blanco
+    titulo = titulo.lower().strip()
+
+    # Realizar búsqueda difusa para encontrar el título más similar en el DataFrame
+    match_scores = moviesdataset['title'].apply(lambda x: fuzz.partial_ratio(x.lower().strip(), titulo))
+    best_match_index = match_scores.idxmax()
+
+    # Obtener el índice de la película correspondiente al título más similar
+    index = best_match_index
+
+    # Calcular la similitud de la película con el resto de películas
+    sim_scores = list(enumerate(cosine_sim[index]))
+    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
+
+    # Obtener los índices de las 5 películas más similares (excluyendo la película consultada)
+    similar_movies_indices = [i[0] for i in sim_scores[1:6]]
+
+    # Obtener los nombres de las películas recomendadas
+    recommended_movies = moviesdataset['title'].iloc[similar_movies_indices].to_list()
+    
+
+    return recommended_movies
+
+
+
+
+
+
